@@ -107,6 +107,12 @@ import UIKit
         }
     }
     
+    @IBInspectable public var showSeparators: Bool = false {
+        didSet {
+            applySegments()
+        }
+    }
+    
     open override var intrinsicContentSize: CGSize {
         let segmentIntrinsicContentSizes = segments.map {
             $0.intrinsicContentSize ?? .zero
@@ -143,6 +149,8 @@ import UIKit
     
     /// `selectedSegmentViews` provide accessibility traits.
     private var selectedSegmentViews: [UIView] = []
+    
+    private var segmentSeparatorsViews: [UIView] = []
     
     var pointerInteractionViews: [UIView] = []
     /// Used for iPad Pointer Interaction support. Holds the reference to the view that should be highlighted, if any.
@@ -269,6 +277,15 @@ import UIKit
             selectedSegmentViews[index].frame = frame
             pointerInteractionViews[index].frame = frame
         }
+        
+        for (index, view) in segmentSeparatorsViews.enumerated() {
+            let segmentFrame = frameForElement(atIndex: index + 1)
+            let heigh = segmentFrame.height - (cornerRadius * 2)
+            let width:CGFloat = 1
+            let frame = CGRect(origin: CGPoint(x: segmentFrame.minX - (width/2), y: segmentFrame.origin.y + cornerRadius), size: CGSize(width: width, height: heigh))
+            view.frame = frame
+            normalSegmentViewsContainerView.bringSubviewToFront(view)
+        }
     }
 
     // MARK: Index Setting
@@ -392,6 +409,17 @@ import UIKit
                 completion()
             })
         }
+        
+        if showSeparators {
+            let separatorIndex = newIndex - 1
+            let separatorIndexesToHide = [separatorIndex, separatorIndex + 1].filter({ normalSegmentViews.indices.contains($0) })
+            
+            for (index,view) in segmentSeparatorsViews.enumerated() {
+                UIView.animate(withDuration: animated ? animationDuration : 0.0) {
+                    view.alpha = separatorIndexesToHide.contains(index) ? 0.0 : 1.0
+                }
+            }
+        }
     }
     
     // MARK: Helpers
@@ -399,6 +427,9 @@ import UIKit
     private func applySegments(shouldResetIndex: Bool = true) {
         normalSegmentViews.forEach { $0.removeFromSuperview() }
         normalSegmentViews.removeAll()
+        
+        segmentSeparatorsViews.forEach({ $0.removeFromSuperview() })
+        segmentSeparatorsViews.removeAll()
         
         selectedSegmentViews.forEach { $0.removeFromSuperview() }
         selectedSegmentViews.removeAll()
@@ -421,6 +452,15 @@ import UIKit
             let pointerInteractionView = UIView()
             pointerInteractionViewsContainerView.addSubview(pointerInteractionView)
             pointerInteractionViews.append(pointerInteractionView)
+        }
+        
+        if showSeparators {
+            segmentSeparatorsViews = (0...(segments.count - 2)).map({ _ in UIView() })
+            segmentSeparatorsViews.forEach({
+                $0.backgroundColor = tintColor
+                $0.isUserInteractionEnabled = false
+                normalSegmentViewsContainerView.addSubview($0)
+            })
         }
         
         updateSegmentViewTraits()
